@@ -18,7 +18,7 @@ from online_update.graph_process import *
 from learn_dictionary import *
 
 # Step 1: Load video and extract segment-level features
-video_path = r'C:\Users\lenovo\Desktop\KFAU\Graduation Project\code\CAVS\VIRAT_S_000200_03_000657_000899.mp4'
+video_path = None
 
 feature_matrix_X, training_video_segments, testing_video_segments,test_mask_segments, stip_to_segment, stip_features, _ = process_video(video_path=video_path)
 
