@@ -1,0 +1,48 @@
+def process_video(video_path):
+
+  cap = cv.VideoCapture(video_path)
+  fgbg = cv.createBackgroundSubtractorMOG2()
+  frame_count = 0
+  frames = []
+  masks = []
+  while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    frames.append(frame)
+    frame_count += 1
+    fgmask = fgbg.apply(frame)
+    masks.append(fgmask)   #saving masks for segmentation and feature extraction
+
+  print(f"Total of {len(frames)} frames retrieved")
+  print(f"Total of {len(masks)} masks retrieved")
+
+  assert len(frames) == len(masks)
+
+  segment_length = 90
+
+  video_segments = [frames[i:i+segment_length] for i in range(0,len(frames),segment_length)]
+  mask_segments = [masks[i:i+segment_length] for i in range(0,len(masks),segment_length)]
+
+  print(f"Total segments: {len(video_segments)}")
+
+  if video_segments and mask_segments:
+    print(f"First segment: {len(video_segments[0])} frames, {len(mask_segments[0])} masks")
+  else:
+    print("No segments found.Check if the video is valid and non-empty.")
+  cap.release()
+
+
+  
+  feature_histograms = []
+  for seg_idx, (vid_seg,mask_seg)  in enumerate(zip(video_segments,mask_segments)):
+    # Detect STIPs in the segment
+    stip_points = detect_STIPs(vid_seg,mask_seg)
+
+    # Compute HOG + HOF features
+    hist = compute_HOG_HOF(vid_seg,stip_points)
+    feature_histograms.append(hist)
+
+    print(f"Segment {seg_idx}: {len(stip_points)} STIPs | Features shape: {hist.shape}")
+  feature_matrix_X = np.vstack(feature_histograms).transpose()
+  return feature_matrix_X

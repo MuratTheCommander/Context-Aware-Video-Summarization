@@ -1,0 +1,41 @@
+import numpy as np
+import cvxpy as cp
+
+
+def optimize_B(X, Df, L, alpha1, alpha2, alpha3):
+    d, N = X.shape       # N = number of segments
+    K = Df.shape[1]      # K = number of dictionary atoms
+    B_opt = np.zeros((K, N))
+
+    for i in range(N):
+        x_i = X[:, i]          # segment i
+        l_i = L[i, :]          # i-th row of Laplacian (1×N)
+
+        # Variable for coefficient vector of this segment
+        b_i = cp.Variable(K)
+
+        # --- Term 1: Reconstruction Loss
+        reconstruction = 0.5 * cp.sum_squares(x_i - Df @ b_i)
+
+        # --- Term 2: Laplacian Regularization (approximate)
+        # Approximation: use l_i (row) as diag of L for this segment
+        laplacian = alpha1 * cp.quad_form(b_i, np.diag(l_i))
+
+        # --- Term 3: Group sparsity (ℓ₂ norm)
+        l2_penalty = alpha2 * cp.norm(b_i, 2)
+
+        # --- Term 4: Elementwise sparsity (ℓ₁ norm)
+        l1_penalty = alpha3 * cp.norm(b_i, 1)
+
+        # --- Total objective
+        objective = cp.Minimize(reconstruction + laplacian + l2_penalty + l1_penalty)
+        problem = cp.Problem(objective)
+
+        # --- Solve the problem
+        try:
+            problem.solve(solver=cp.SCS, verbose=False)
+            B_opt[:, i] = b_i.value if b_i.value is not None else np.zeros(K)
+        except:
+            B_opt[:, i] = np.zeros(K)  # fallback if solver fails
+
+    return B_opt
